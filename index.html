@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Convite Mágico APAE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600&family=Montserrat:wght@300;400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #f7d794;
+            --flap-color: #f3a683;
+            --text-color: #2f3542;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Montserrat', sans-serif;
+            overflow: hidden;
+            background-color: #000000;
+        }
+
+        /* LUZES DE FUNDO ANIMADAS */
+        #bg-lights-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; pointer-events: none;
+        }
+        .bg-light-dot {
+            position: absolute; border-radius: 50%; opacity: 0;
+            animation: twinkle 4s infinite ease-in-out;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; transform: scale(0.5); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+
+        /* LUZES PISCA-PISCA NO TOPO */
+        .light-strand {
+            position: fixed; top: -10px; left: 0; width: 100%;
+            display: flex; justify-content: space-around;
+            z-index: 5; pointer-events: none;
+        }
+        .light {
+            width: 20px; height: 20px; border-radius: 50%; background: #fff;
+            box-shadow: 0 5px 15px rgba(255,255,255,0.8);
+            animation: blink 1.5s infinite alternate;
+        }
+        .light:nth-child(1) { background: #ff7675; animation-delay: 0.2s; }
+        .light:nth-child(2) { background: #fdcb6e; animation-delay: 0.5s; }
+        .light:nth-child(3) { background: #55efc4; animation-delay: 0.8s; }
+        .light:nth-child(4) { background: #74b9ff; animation-delay: 1.1s; }
+        .light:nth-child(5) { background: #a29bfe; animation-delay: 1.4s; }
+        .light:nth-child(6) { background: #ff7675; animation-delay: 0.3s; }
+        @keyframes blink {
+            0% { opacity: 0.4; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.1); }
+        }
+
+        /* PARTÍCULAS MÁGICAS */
+        .magic-particles {
+            position: absolute; width: 400px; height: 400px;
+            pointer-events: none; z-index: 8;
+        }
+        .particle {
+            position: absolute; border-radius: 50%; opacity: 0;
+            animation: drift 4s infinite ease-in-out;
+        }
+        .p1 { width: 10px; height: 10px; background: #fdcb6e; top: 20%; left: 20%; animation-delay: 0s; }
+        .p2 { width: 15px; height: 15px; background: #ff7675; top: 60%; left: 80%; animation-delay: 1s; }
+        .p3 { width: 8px; height: 8px; background: #74b9ff; top: 80%; left: 30%; animation-delay: 2s; }
+        .p4 { width: 12px; height: 12px; background: #55efc4; top: 10%; left: 70%; animation-delay: 0.5s; }
+        
+        .scene.open .magic-particles { display: none; }
+        @keyframes drift {
+            0% { transform: translate(0, 0); opacity: 0; }
+            50% { opacity: 0.8; }
+            100% { transform: translate(40px, -60px); opacity: 0; }
+        }
+
+        #fireworks-canvas {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 1; pointer-events: none;
+        }
+
+        .scene {
+            position: relative; display: flex; flex-direction: column;
+            align-items: center; cursor: pointer; z-index: 10;
+        }
+
+        /* ENVELOPE MENOR */
+        .envelope-wrapper {
+            position: relative;
+            width: 200px; 
+            height: 140px; 
+            animation: float 3s ease-in-out infinite;
+            z-index: 10;
+        }
+
+        .envelope {
+            position: relative; width: 100%; height: 100%;
+            background: var(--primary-color); border-radius: 0 0 10px 10px;
+            box-shadow: 0 10px 20px rgba(255,255,255,0.1);
+        }
+
+        .flap {
+            position: absolute; top: 0; left: 0; width: 0; height: 0;
+            border-left: 100px solid transparent; 
+            border-right: 100px solid transparent;
+            border-top: 80px solid var(--flap-color);
+            transform-origin: top; 
+            /* AQUI: Aumentei o tempo para 1.5s para ser bem lento */
+            transition: transform 1.5s ease-in-out; 
+            z-index: 5;
+        }
+
+        .pocket {
+            position: absolute; bottom: 0; left: 0; width: 0; height: 0;
+            border-left: 100px solid #f5cd79;
+            border-right: 100px solid #f5cd79;
+            border-bottom: 70px solid #e1b12c;
+            border-top: 70px solid transparent;
+            border-radius: 0 0 10px 10px; z-index: 4;
+        }
+
+        /* A CARTA (Configuração Inicial) */
+        .letter {
+            position: absolute; bottom: 0; left: 50%;
+            transform: translateX(-50%) scale(0.9); 
+            width: 90%; height: 90%;
+            background: #fff; padding: 20px; 
+            z-index: 2; border-radius: 5px; display: flex;
+            flex-direction: column; align-items: center; overflow: hidden;
+            /* Removemos a transition simples, vamos usar animation no click */
+        }
+
+        /* ESTADO ABERTO DA CENA */
+        .scene.open .envelope-wrapper { animation-play-state: paused; }
+        
+        .scene.open .flap { 
+            transform: rotateX(180deg); 
+            z-index: 1; 
+        }
+        
+        /* ANIMAÇÃO MÁGICA DE VOO */
+        .scene.open .letter {
+            position: fixed; /* Solta da tela */
+            z-index: 100;
+            bottom: unset; top: 50%; left: 50%;
+            /* Aqui chamamos a animação complexa */
+            animation: magicFly 3.5s forwards ease-in-out;
+            
+            /* Estilos finais da carta */
+            width: Min(600px, 90vw); 
+            height: Min(80vh, 700px);
+            border: 2px solid #dcdde1; 
+            overflow-y: auto;
+            background-image: url('https://www.transparenttextures.com/patterns/cream-paper.png');
+            background-color: #fffaf0;
+        }
+
+        /* KEYFRAMES DO VOO MÁGICO */
+        @keyframes magicFly {
+            0% {
+                /* Começa "dentro" do envelope */
+                width: 180px; height: 120px;
+                top: 50%; left: 50%;
+                transform: translate(-50%, 20%) scale(0.5) rotate(0deg);
+                opacity: 0;
+            }
+            15% {
+                /* Espera a aba abrir um pouco e começa a sair */
+                opacity: 1;
+                transform: translate(-50%, -60%) scale(0.5) rotate(0deg);
+            }
+            35% {
+                /* Voa para a esquerda e gira */
+                top: 30%; left: 30%;
+                transform: translate(-50%, -50%) scale(0.6) rotate(-15deg);
+                box-shadow: 0 0 50px rgba(253, 203, 110, 0.8); /* Brilho dourado */
+            }
+            65% {
+                /* Voa para a direita e gira para o outro lado */
+                top: 60%; left: 70%;
+                transform: translate(-50%, -50%) scale(0.8) rotate(10deg);
+                box-shadow: 0 0 50px rgba(85, 239, 196, 0.8); /* Brilho verde */
+            }
+            100% {
+                /* Pousa no centro */
+                top: 50%; left: 50%;
+                width: Min(600px, 90vw); 
+                height: Min(80vh, 700px);
+                transform: translate(-50%, -50%) scale(1) rotate(0deg);
+                box-shadow: 0 20px 50px rgba(0,0,0,0.5); /* Sombra normal */
+            }
+        }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); opacity: 0; pointer-events: none;
+            transition: opacity 1s; z-index: 50;
+        }
+        .scene.open .overlay { opacity: 1; pointer-events: all; }
+
+        .letter-content {
+            opacity: 0; transform: translateY(20px);
+            /* O texto demora 3.2s para começar a aparecer (tempo do voo) */
+            transition: opacity 1s ease 3.2s, transform 1s ease 3.2s;
+            text-align: center; width: 100%;
+        }
+        .scene.open .letter-content { opacity: 1; transform: translateY(0); }
+
+        h1 { font-family: 'Dancing Script', cursive; color: #c0392b; font-size: 3rem; margin-bottom: 20px; }
+        p { font-size: 1rem; line-height: 1.6; margin-bottom: 15px; color: #555; }
+        
+        .highlight-box {
+            background: #fdf5e6; border: 1px dashed #e1b12c;
+            padding: 15px; margin: 20px 0; border-radius: 8px;
+        }
+        .details { font-weight: 600; color: #2f3542; }
+        .heart { color: #e74c3c; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; transform: scale(0.95); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+
+        .instruction {
+            margin-top: 40px; color: white; font-size: 1rem;
+            text-align: center; animation: pulse 2s infinite;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5); font-weight: 600;
+        }
+        
+        .close-btn {
+            position: absolute; top: 10px; right: 15px;
+            font-size: 24px; cursor: pointer; color: #aaa; display: none;
+            /* Botão só aparece no fim da animação */
+            animation: fadeIn 0.5s ease 3.5s forwards; 
+            opacity: 0;
+        }
+        .scene.open .close-btn { display: block; }
+        
+        @keyframes fadeIn { to { opacity: 1; } }
+
+    </style>
+</head>
+<body>
+    <audio id="bg-music" loop>
+        <source src="musica/fundo.mp3" type="audio/mp3">
+    </audio>
+
+    <audio id="sfx-open" src="https://assets.mixkit.co/sfx/preview/mixkit-magical-glitter-reveal-2580.mp3" preload="auto"></audio> 
+    <audio id="sfx-close" src="https://assets.mixkit.co/sfx/preview/mixkit-paper-quick-slide-2588.mp3" preload="auto"></audio>
+
+    <div id="bg-lights-container"></div>
+
+    <div class="light-strand">
+        <div class="light"></div> <div class="light"></div> <div class="light"></div>
+        <div class="light"></div> <div class="light"></div> <div class="light"></div>
+    </div>
+
+    <canvas id="fireworks-canvas"></canvas>
+
+    <div class="overlay" id="overlay"></div>
+
+    <div class="scene" id="scene">
+        <div class="magic-particles">
+            <div class="particle p1"></div> <div class="particle p2"></div>
+            <div class="particle p3"></div> <div class="particle p4"></div>
+        </div>
+
+        <div class="envelope-wrapper">
+            <div class="envelope">
+                <div class="flap"></div>
+                <div class="pocket"></div>
+                
+                <div class="letter">
+                    <span class="close-btn" onclick="fecharCarta(event)">&times;</span>
+                    <div class="letter-content">
+                        <div style="font-size: 40px; margin-bottom: 10px;">✨🌻✨</div>
+                        <h1>Confraternização APAE</h1>
+                        <p>Aos nossos queridos profissionais,</p>
+                        <p>Durante todo o ano, vocês foram as mãos que guiaram, os sorrisos que acolheram e o coração pulsante da nossa instituição. Transformar vidas não é apenas uma profissão, é uma missão que vocês cumprem com excelência.</p>
+                        <p>Chegou a hora de celebrar nossas vitórias, nossa união e renovar as energias!</p>
+                        <div class="highlight-box">
+                            <p class="details">📅 Data: 18 de Dezembro</p>
+                            <p class="details">⏰ Horário: Das 10h às 18h</p>
+                            <p class="details">🚌 Transporte: Saída às 09h30 (Sede)</p>
+                        </div>
+                        <p>Prepare-se para um dia de muita alegria, música e gratidão. Você é parte essencial desta família!</p>
+                        <p style="margin-top: 20px; font-weight: bold;">Contamos com sua presença! <span class="heart">❤</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="instruction">Toque no envelope para abrir ✉️</div>
+    </div>
+
+    <script>
+        const scene = document.getElementById('scene');
+        const instructionTxt = document.querySelector('.instruction');
+        const openSFX = document.getElementById('sfx-open');
+        const closeSFX = document.getElementById('sfx-close');
+        
+        // SELECIONA A MÚSICA
+        const bgMusic = document.getElementById('bg-music');
+        
+        let isOpen = false;
+
+        // LUZES DE FUNDO
+        function createBackgroundLights() {
+            const container = document.getElementById('bg-lights-container');
+            const colors = ['#ff7675', '#fdcb6e', '#55efc4', '#74b9ff', '#a29bfe'];
+            for (let i = 0; i < 50; i++) {
+                const light = document.createElement('div');
+                light.classList.add('bg-light-dot');
+                light.style.left = Math.random() * 100 + 'vw';
+                light.style.top = Math.random() * 100 + 'vh';
+                light.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                light.style.width = Math.random() * 6 + 2 + 'px';
+                light.style.height = light.style.width;
+                light.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(light);
+            }
+        }
+        createBackgroundLights();
+
+        // CONFETE (Agora só estoura no final da mágica)
+        function lançarConfete() {
+            confetti({
+                particleCount: 200, spread: 100, origin: { y: 0.6 },
+                colors: ['#ff7675', '#fdcb6e', '#55efc4', '#74b9ff', '#a29bfe'],
+                ticks: 300
+            });
+        }
+
+        scene.addEventListener('click', function() {
+            if (!isOpen) {
+                // TENTA TOCAR A MÚSICA AO CLICAR (Para navegadores não bloquearem)
+                bgMusic.volume = 0.5; // Define volume para 50%
+                bgMusic.play().catch(e => console.log("Erro ao tocar música:", e));
+
+                openSFX.currentTime = 0;
+                openSFX.play();
+                scene.classList.add('open');
+                isOpen = true;
+                instructionTxt.style.opacity = '0';
+                
+                // Explode o confete só quando a carta "pousar" (após 3 segundos)
+                setTimeout(lançarConfete, 3000);
+            }
+        });
+
+        function fecharCarta(e) {
+            e.stopPropagation(); 
+            closeSFX.currentTime = 0;
+            closeSFX.play();
+            scene.classList.remove('open');
+            isOpen = false;
+            setTimeout(() => {
+                instructionTxt.style.opacity = '1';
+            }, 500);
+        }
+        document.getElementById('overlay').addEventListener('click', fecharCarta);
+
+        // FOGOS (CANVAS)
+        const canvas = document.getElementById('fireworks-canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let particles = [];
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = canvas.height + Math.random() * 200;
+                this.radius = Math.random() * 4 + 1;
+                this.colors = ['#ff7675', '#fdcb6e', '#55efc4', '#74b9ff', '#f9ca24', '#ffffff'];
+                this.color = this.colors[Math.floor(Math.random() * this.colors.length)];
+                this.speedY = Math.random() * -3 - 1.5;
+                this.speedX = Math.random() * 2 - 1;
+                this.gravity = 0.05;
+                this.opacity = 1;
+                this.exploding = false;
+            }
+            update() {
+                if (!this.exploding) {
+                    this.y += this.speedY;
+                    this.x += this.speedX;
+                    this.speedY += this.gravity;
+                    if (this.speedY >= 0 || this.y < canvas.height / 4) { this.exploding = true; }
+                } else {
+                     this.opacity -= 0.025; this.radius += 0.05;
+                }
+            }
+            draw() {
+                ctx.globalAlpha = this.opacity; ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10; ctx.shadowColor = this.color;
+                ctx.fill(); ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+            }
+        }
+
+        function initFireworks() { for (let i = 0; i < 100; i++) particles.push(new Particle()); }
+        function animateFireworks() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < particles.length; i++) {
+                particles[i].update(); particles[i].draw();
+                if (particles[i].opacity <= 0) {
+                    particles.splice(i, 1); particles.push(new Particle()); i--;
+                }
+            }
+            requestAnimationFrame(animateFireworks);
+        }
+        initFireworks(); animateFireworks();
+        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+    </script>
+</body>
+</html>
